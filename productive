@@ -1,0 +1,67 @@
+#!/bin/sh
+# Productive 
+# Tool to stay focused on your works by killing distracting windows 
+
+# Specify window class_names (refer tool called xprop for getting class_names)
+kill_windows=("Chromium","Firefox","Thunar")
+
+# Message to be displayed when the productivity session starts 
+start_msg="You are productive till "
+
+# The message above seems incomplete because the section below (if section) takes this message and adds time to display it to the user e.g ( You are productive till 12:58 )
+
+# Message to be displayed when the productivity session ends
+end_msg="You are no longer productive"
+while getopts l flag
+do
+		case "${flag}" in 
+				l) echo "$kill_windows";;
+				*) get_help
+		esac
+done
+hm="$1"
+
+get_help() {
+		
+		echo -e "\nUSAGE: productive [OPTIONS]\n\nOPTIONS:-T --> duration (format HH:MM:AM/PM) from the current time\n-h --> This help Page" 
+exit 0
+}
+
+do_count() {
+		
+		target_h="$(echo $hm | sed 's/:/ /g' | awk '{print $1}')"
+		target_m="$(echo $hm | sed 's/:/ /g' | awk '{print $2}')"
+		target_ampm="$(echo $hm | sed 's/:/ /g' | awk '{print tolower($3)}')"
+		msg="$hm"
+
+		echo "$start_msg$msg"
+		notify-send "$start_msg $msg"
+		
+		while true; do
+				hr="$(date '+%I')"
+				min="$(date '+%M')"
+				ampm="$(date '+%P')"
+				if [[ "$target_h" == "$hr" && "$target_m" == "$min" && "$target_ampm" == "$ampm" ]]; then
+						echo "$end_msg"
+						notify-send "$end_msg"
+						break
+				else 
+						win_id_cmd=$(xprop _NET_ACTIVE_WINDOW -root | awk '{print $5}')
+						win_name=$(xprop -id "$win_id_cmd" WM_CLASS | awk '{print tolower($4)}' | sed 's/\"//g' | sed 's/,//g')
+						
+						if printf '%s\n' ${kill_windows[@]} | grep -q -P -i $win_name; then
+								pkill -f "$win_name"
+						fi
+
+						sleep 1s
+				fi
+		done
+};
+
+
+if [[ "$hm" == "" ]]; then
+		get_help
+
+elif [[ "$hm" != "-l" && "$hm" != "" ]]; then
+		do_count
+fi
